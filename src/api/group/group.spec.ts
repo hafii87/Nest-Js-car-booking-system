@@ -11,22 +11,48 @@ import { RemoveUserFromGroupDto } from './dto/remove-user-from-group.dto';
 
 describe('GroupService', () => {
   let service: GroupService;
-  let mockGroupModel: any;
+  let mockModel: any;
+
+  const mockGroup = {
+    _id: '507f1f77bcf86cd799439011',
+    id: 1,
+    name: 'Weekend Drivers',
+    description: 'Weekend bookings',
+    createdBy: 1,
+    active: true,
+    users: [],
+    groupRules: {},
+    bookings: [],
+    createdAt: new Date(),
+  };
 
   beforeEach(async () => {
-    mockGroupModel = {
-      find: jest.fn(),
-      findById: jest.fn(),
-      findByIdAndUpdate: jest.fn(),
-      findByIdAndDelete: jest.fn(),
+    mockModel = {
+      find: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      findById: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      findByIdAndUpdate: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      findByIdAndDelete: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
     };
+
+    mockModel.mockImplementation = jest.fn((data) => ({
+      ...data,
+      save: jest.fn().mockResolvedValue({ ...data, _id: '507f1f77bcf86cd799439011' }),
+    }));
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GroupService,
         {
           provide: getModelToken('Group'),
-          useValue: mockGroupModel,
+          useValue: mockModel,
         },
       ],
     }).compile();
@@ -47,146 +73,95 @@ describe('GroupService', () => {
         createdBy: 1,
       };
 
-      const savedGroup = {
-        _id: '507f1f77bcf86cd799439011',
-        ...createGroupDto,
-        active: true,
-        users: [],
-        createdAt: new Date(),
+      const mockInstance = {
+        save: jest.fn().mockResolvedValue(mockGroup),
       };
 
-      const groupInstance = {
-        save: jest.fn().mockResolvedValue(savedGroup),
-      };
-
-      mockGroupModel.mockImplementation(() => groupInstance);
+      mockModel.mockImplementation.mockReturnValue(mockInstance);
 
       const result = await service.create(createGroupDto);
 
-      expect(result.name).toBe(createGroupDto.name);
-      expect(result.description).toBe(createGroupDto.description);
+      expect(result.name).toBe('Weekend Drivers');
+      expect(result.description).toBe('Group for weekend car bookings');
     });
   });
 
   describe('findAll', () => {
     it('should return an array of groups', async () => {
-      const groups = [
-        {
-          _id: '1',
-          name: 'Weekend Drivers',
-          description: 'Weekend bookings',
-          createdBy: 1,
-          active: true,
-        },
-        {
-          _id: '2',
-          name: 'Business Travelers',
-          description: 'Business trip bookings',
-          createdBy: 2,
-          active: true,
-        },
-      ];
+      const groups = [mockGroup];
 
-      mockGroupModel.find.mockReturnValue({
+      mockModel.find.mockReturnValue({
         exec: jest.fn().mockResolvedValue(groups),
       });
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(2);
-      expect(mockGroupModel.find).toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('Weekend Drivers');
     });
   });
 
   describe('findById', () => {
     it('should return a group by id', async () => {
-      const groupId = 1;
-      const group = {
-        _id: '507f1f77bcf86cd799439011',
-        id: groupId,
-        name: 'Weekend Drivers',
-        description: 'Weekend bookings',
-        active: true,
-      };
-
-      mockGroupModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(group),
+      mockModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockGroup),
       });
 
-      const result = await service.findById(groupId);
+      const result = await service.findById(1);
 
-      expect(result.name).toBe(group.name);
-      expect(mockGroupModel.findById).toHaveBeenCalledWith(groupId);
+      expect(result.name).toBe('Weekend Drivers');
+      expect(mockModel.findById).toHaveBeenCalledWith(1);
     });
 
     it('should throw NotFoundException when group does not exist', async () => {
-      const groupId = 999;
-
-      mockGroupModel.findById.mockReturnValue({
+      mockModel.findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.findById(groupId)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(999)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('findByCreator', () => {
     it('should return groups created by a user', async () => {
-      const createdBy = 1;
-      const groups = [
-        {
-          _id: '1',
-          name: 'Weekend Drivers',
-          createdBy,
-          active: true,
-        },
-      ];
+      const groups = [mockGroup];
 
-      mockGroupModel.find.mockReturnValue({
+      mockModel.find.mockReturnValue({
         exec: jest.fn().mockResolvedValue(groups),
       });
 
-      const result = await service.findByCreator(createdBy);
+      const result = await service.findByCreator(1);
 
       expect(result).toHaveLength(1);
-      expect(mockGroupModel.find).toHaveBeenCalledWith({ createdBy });
+      expect(mockModel.find).toHaveBeenCalledWith({ createdBy: 1 });
     });
   });
 
   describe('update', () => {
     it('should update a group', async () => {
-      const groupId = 1;
       const updateGroupDto: UpdateGroupDto = {
         name: 'Updated Group Name',
         description: 'Updated description',
       };
 
-      const updatedGroup = {
-        _id: '507f1f77bcf86cd799439011',
-        id: groupId,
-        ...updateGroupDto,
-        active: true,
-      };
+      const updatedGroup = { ...mockGroup, ...updateGroupDto };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(updatedGroup),
       });
 
-      const result = await service.update(groupId, updateGroupDto);
+      const result = await service.update(1, updateGroupDto);
 
-      expect(result.name).toBe(updateGroupDto.name);
-      expect(mockGroupModel.findByIdAndUpdate).toHaveBeenCalledWith(groupId, updateGroupDto, { new: true });
+      expect(result.name).toBe('Updated Group Name');
+      expect(mockModel.findByIdAndUpdate).toHaveBeenCalledWith(1, updateGroupDto, { new: true });
     });
 
     it('should throw NotFoundException when group does not exist', async () => {
-      const groupId = 999;
-      const updateGroupDto: UpdateGroupDto = { name: 'New Name' };
-
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.update(groupId, updateGroupDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update(999, {})).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -202,19 +177,17 @@ describe('GroupService', () => {
       };
 
       const groupWithRules = {
-        _id: '507f1f77bcf86cd799439011',
-        id: 1,
-        name: 'Weekend Drivers',
+        ...mockGroup,
         groupRules: createGroupRulesDto,
       };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(groupWithRules),
       });
 
       const result = await service.createRules(createGroupRulesDto);
 
-      expect(mockGroupModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      expect(mockModel.findByIdAndUpdate).toHaveBeenCalledWith(
         createGroupRulesDto.groupId,
         { groupRules: createGroupRulesDto },
         { new: true }
@@ -231,11 +204,13 @@ describe('GroupService', () => {
         referenceVerification: false,
       };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.createRules(createGroupRulesDto)).rejects.toThrow(NotFoundException);
+      await expect(service.createRules(createGroupRulesDto)).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -247,18 +222,17 @@ describe('GroupService', () => {
       };
 
       const groupWithUpdatedRules = {
-        _id: '507f1f77bcf86cd799439011',
-        id: groupId,
+        ...mockGroup,
         groupRules: updateGroupRulesDto,
       };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(groupWithUpdatedRules),
       });
 
       const result = await service.updateRules(groupId, updateGroupRulesDto);
 
-      expect(mockGroupModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      expect(mockModel.findByIdAndUpdate).toHaveBeenCalledWith(
         groupId,
         { $set: { groupRules: updateGroupRulesDto } },
         { new: true }
@@ -269,11 +243,13 @@ describe('GroupService', () => {
       const groupId = 999;
       const updateGroupRulesDto: UpdateGroupRulesDto = { phoneVerification: true };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.updateRules(groupId, updateGroupRulesDto)).rejects.toThrow(NotFoundException);
+      await expect(service.updateRules(groupId, updateGroupRulesDto)).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -284,20 +260,15 @@ describe('GroupService', () => {
         userId: 1,
       };
 
-      const groupWithUser = {
-        _id: '507f1f77bcf86cd799439011',
-        id: 1,
-        name: 'Weekend Drivers',
-        users: [1],
-      };
+      const groupWithUser = { ...mockGroup, users: [1] };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(groupWithUser),
       });
 
       const result = await service.addUserToGroup(addUserToGroupDto);
 
-      expect(mockGroupModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      expect(mockModel.findByIdAndUpdate).toHaveBeenCalledWith(
         addUserToGroupDto.groupId,
         { $addToSet: { users: addUserToGroupDto.userId } },
         { new: true }
@@ -310,11 +281,13 @@ describe('GroupService', () => {
         userId: 1,
       };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.addUserToGroup(addUserToGroupDto)).rejects.toThrow(NotFoundException);
+      await expect(service.addUserToGroup(addUserToGroupDto)).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
@@ -325,20 +298,15 @@ describe('GroupService', () => {
         userId: 1,
       };
 
-      const groupWithoutUser = {
-        _id: '507f1f77bcf86cd799439011',
-        id: 1,
-        name: 'Weekend Drivers',
-        users: [],
-      };
+      const groupWithoutUser = { ...mockGroup, users: [] };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(groupWithoutUser),
       });
 
       const result = await service.removeUserFromGroup(removeUserFromGroupDto);
 
-      expect(mockGroupModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      expect(mockModel.findByIdAndUpdate).toHaveBeenCalledWith(
         removeUserFromGroupDto.groupId,
         { $pull: { users: removeUserFromGroupDto.userId } },
         { new: true }
@@ -351,38 +319,39 @@ describe('GroupService', () => {
         userId: 1,
       };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.removeUserFromGroup(removeUserFromGroupDto)).rejects.toThrow(NotFoundException);
+      await expect(service.removeUserFromGroup(removeUserFromGroupDto)).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 
   describe('deactivate', () => {
     it('should deactivate a group', async () => {
       const groupId = 1;
-      const deactivatedGroup = {
-        _id: '507f1f77bcf86cd799439011',
-        id: groupId,
-        name: 'Weekend Drivers',
-        active: false,
-      };
+      const deactivatedGroup = { ...mockGroup, active: false };
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(deactivatedGroup),
       });
 
       const result = await service.deactivate(groupId);
 
       expect(result.active).toBe(false);
-      expect(mockGroupModel.findByIdAndUpdate).toHaveBeenCalledWith(groupId, { active: false }, { new: true });
+      expect(mockModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        groupId,
+        { active: false },
+        { new: true }
+      );
     });
 
     it('should throw NotFoundException when group does not exist', async () => {
       const groupId = 999;
 
-      mockGroupModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
@@ -393,21 +362,20 @@ describe('GroupService', () => {
   describe('remove', () => {
     it('should delete a group', async () => {
       const groupId = 1;
-      const group = { _id: '507f1f77bcf86cd799439011', id: groupId };
 
-      mockGroupModel.findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(group),
+      mockModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockGroup),
       });
 
       await service.remove(groupId);
 
-      expect(mockGroupModel.findByIdAndDelete).toHaveBeenCalledWith(groupId);
+      expect(mockModel.findByIdAndDelete).toHaveBeenCalledWith(groupId);
     });
 
     it('should throw NotFoundException when group does not exist', async () => {
       const groupId = 999;
 
-      mockGroupModel.findByIdAndDelete.mockReturnValue({
+      mockModel.findByIdAndDelete.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 

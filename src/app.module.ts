@@ -11,7 +11,7 @@ import { AppService } from './app.service';
   imports: [
     MongooseModule.forRoot(
       process.env.MONGODB_URI ||
-        'mongodb+srv://muhammadhafeezurrehman77_db_user:fLIk6vQyGddsrYzE@cluster0.l9oepbr.mongodb.net/nest?retryWrites=true&w=majority',
+        'mongodb://localhost:27017/car-booking-system',
     ),
     UserModule,
     BookingModule,

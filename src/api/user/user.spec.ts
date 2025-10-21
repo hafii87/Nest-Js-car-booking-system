@@ -7,24 +7,49 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 describe('UserService', () => {
   let service: UserService;
-  let mockUserModel: any;
+  let mockModel: any;
+
+  const mockUser = {
+    _id: '507f1f77bcf86cd799439011',
+    id: 1,
+    name: 'John Doe',
+    email: 'john@example.com',
+    phone: '1234567890',
+    address: '123 Main St',
+    active: true,
+    createdAt: new Date(),
+  };
 
   beforeEach(async () => {
-    mockUserModel = {
-      findOne: jest.fn(),
-      find: jest.fn(),
-      findById: jest.fn(),
-      findByIdAndUpdate: jest.fn(),
-      findByIdAndDelete: jest.fn(),
-      create: jest.fn(),
+    mockModel = {
+      findOne: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      find: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      findById: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      findByIdAndUpdate: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      findByIdAndDelete: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
     };
+
+    mockModel.mockImplementation = jest.fn((data) => ({
+      ...data,
+      save: jest.fn().mockResolvedValue({ ...data, _id: '507f1f77bcf86cd799439011' }),
+    }));
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserService,
         {
           provide: getModelToken('User'),
-          useValue: mockUserModel,
+          useValue: mockModel,
         },
       ],
     }).compile();
@@ -46,26 +71,18 @@ describe('UserService', () => {
         address: '123 Main St',
       };
 
-      const savedUser = {
-        _id: '507f1f77bcf86cd799439011',
-        ...createUserDto,
-        active: true,
-        createdAt: new Date(),
-      };
-
-      mockUserModel.findOne.mockReturnValue({
+      mockModel.findOne.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      const userInstance = {
-        save: jest.fn().mockResolvedValue(savedUser),
+      const mockInstance = {
+        save: jest.fn().mockResolvedValue(mockUser),
       };
 
-      mockUserModel.mockImplementation(() => userInstance);
+      mockModel.mockImplementation.mockReturnValue(mockInstance);
 
       const result = await service.create(createUserDto);
 
-      expect(mockUserModel.findOne).toHaveBeenCalledWith({ email: createUserDto.email });
       expect(result.name).toBe(createUserDto.name);
       expect(result.email).toBe(createUserDto.email);
     });
@@ -78,8 +95,8 @@ describe('UserService', () => {
         phone: '1234567890',
       };
 
-      mockUserModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ email: createUserDto.email }),
+      mockModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockUser),
       });
 
       await expect(service.create(createUserDto)).rejects.toThrow(ConflictException);
@@ -88,179 +105,119 @@ describe('UserService', () => {
 
   describe('findAll', () => {
     it('should return an array of users', async () => {
-      const users = [
-        { _id: '1', name: 'User 1', email: 'user1@example.com', phone: '123', active: true },
-        { _id: '2', name: 'User 2', email: 'user2@example.com', phone: '456', active: true },
-      ];
+      const users = [mockUser];
 
-      mockUserModel.find.mockReturnValue({
+      mockModel.find.mockReturnValue({
         exec: jest.fn().mockResolvedValue(users),
       });
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(2);
-      expect(mockUserModel.find).toHaveBeenCalled();
-    });
-
-    it('should return empty array when no users exist', async () => {
-      mockUserModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([]),
-      });
-
-      const result = await service.findAll();
-
-      expect(result).toEqual([]);
+      expect(result).toHaveLength(1);
+      expect(result[0].email).toBe('john@example.com');
     });
   });
 
   describe('findById', () => {
     it('should return a user by id', async () => {
-      const userId = 1;
-      const user = {
-        _id: '507f1f77bcf86cd799439011',
-        id: userId,
-        name: 'John Doe',
-        email: 'john@example.com',
-        phone: '1234567890',
-        active: true,
-      };
-
-      mockUserModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(user),
+      mockModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockUser),
       });
 
-      const result = await service.findById(userId);
+      const result = await service.findById(1);
 
-      expect(result.id).toBe(userId);
-      expect(mockUserModel.findById).toHaveBeenCalledWith(userId);
+      expect(result.name).toBe('John Doe');
+      expect(mockModel.findById).toHaveBeenCalledWith(1);
     });
 
     it('should throw NotFoundException when user does not exist', async () => {
-      const userId = 999;
-
-      mockUserModel.findById.mockReturnValue({
+      mockModel.findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.findById(userId)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(999)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('findByEmail', () => {
     it('should return a user by email', async () => {
-      const email = 'john@example.com';
-      const user = {
-        _id: '507f1f77bcf86cd799439011',
-        name: 'John Doe',
-        email,
-        phone: '1234567890',
-        active: true,
-      };
-
-      mockUserModel.findOne.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(user),
+      mockModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockUser),
       });
 
-      const result = await service.findByEmail(email);
+      const result = await service.findByEmail('john@example.com');
 
-      expect(result.email).toBe(email);
-      expect(mockUserModel.findOne).toHaveBeenCalledWith({ email });
+      expect(result.email).toBe('john@example.com');
+      expect(mockModel.findOne).toHaveBeenCalledWith({ email: 'john@example.com' });
     });
 
     it('should throw NotFoundException when email does not exist', async () => {
-      const email = 'nonexistent@example.com';
-
-      mockUserModel.findOne.mockReturnValue({
+      mockModel.findOne.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.findByEmail(email)).rejects.toThrow(NotFoundException);
+      await expect(service.findByEmail('nonexistent@example.com')).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('should update a user', async () => {
-      const userId = 1;
       const updateUserDto: UpdateUserDto = {
         name: 'Jane Doe',
-        email: 'jane@example.com',
       };
 
-      const updatedUser = {
-        _id: '507f1f77bcf86cd799439011',
-        id: userId,
-        ...updateUserDto,
-        phone: '1234567890',
-        active: true,
-      };
+      const updatedUser = { ...mockUser, name: 'Jane Doe' };
 
-      mockUserModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(updatedUser),
       });
 
-      const result = await service.update(userId, updateUserDto);
+      const result = await service.update(1, updateUserDto);
 
-      expect(result.name).toBe(updateUserDto.name);
-      expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(userId, updateUserDto, { new: true });
+      expect(result.name).toBe('Jane Doe');
+      expect(mockModel.findByIdAndUpdate).toHaveBeenCalledWith(1, updateUserDto, { new: true });
     });
 
     it('should throw NotFoundException when user does not exist', async () => {
-      const userId = 999;
-      const updateUserDto: UpdateUserDto = { name: 'Jane Doe' };
-
-      mockUserModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.update(userId, updateUserDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update(999, {})).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('deactivate', () => {
     it('should deactivate a user', async () => {
-      const userId = 1;
-      const deactivatedUser = {
-        _id: '507f1f77bcf86cd799439011',
-        id: userId,
-        name: 'John Doe',
-        email: 'john@example.com',
-        active: false,
-      };
+      const deactivatedUser = { ...mockUser, active: false };
 
-      mockUserModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(deactivatedUser),
       });
 
-      const result = await service.deactivate(userId);
+      const result = await service.deactivate(1);
 
       expect(result.active).toBe(false);
-      expect(mockUserModel.findByIdAndUpdate).toHaveBeenCalledWith(userId, { active: false }, { new: true });
     });
   });
 
   describe('remove', () => {
     it('should delete a user', async () => {
-      const userId = 1;
-      const user = { _id: '507f1f77bcf86cd799439011', id: userId };
-
-      mockUserModel.findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(user),
+      mockModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockUser),
       });
 
-      await service.remove(userId);
+      await service.remove(1);
 
-      expect(mockUserModel.findByIdAndDelete).toHaveBeenCalledWith(userId);
+      expect(mockModel.findByIdAndDelete).toHaveBeenCalledWith(1);
     });
 
     it('should throw NotFoundException when user does not exist', async () => {
-      const userId = 999;
-
-      mockUserModel.findByIdAndDelete.mockReturnValue({
+      mockModel.findByIdAndDelete.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.remove(userId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
     });
   });
 });

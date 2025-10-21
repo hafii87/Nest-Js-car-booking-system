@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class AppService {
   getHello(): string {
-    return 'Welcome to NestJS Car Booking API!';
+    return 'Car Booking System API is running!';
   }
 
   getHealth(): { status: string; timestamp: string } {

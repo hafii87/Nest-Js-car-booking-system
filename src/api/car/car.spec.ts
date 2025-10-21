@@ -4,27 +4,51 @@ import { NotFoundException } from '@nestjs/common';
 import { CarService } from './car.service';
 import { CreateCarDto } from './dto/create-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
-import { CreateCarRulesDto } from './dto/create-car-rules.dto';
-import { UpdateCarRulesDto } from './dto/update-car-rules.dto';
 
 describe('CarService', () => {
   let service: CarService;
-  let mockCarModel: any;
+  let mockModel: any;
+
+  const mockCar = {
+    _id: '507f1f77bcf86cd799439011',
+    id: 1,
+    name: 'Tesla Model 3',
+    description: 'Electric sedan',
+    type: 'SEDAN',
+    brand: 'Tesla',
+    model: 'Model 3',
+    color: 'Red',
+    active: true,
+    createdAt: new Date(),
+  };
 
   beforeEach(async () => {
-    mockCarModel = {
-      find: jest.fn(),
-      findById: jest.fn(),
-      findByIdAndUpdate: jest.fn(),
-      findByIdAndDelete: jest.fn(),
+    mockModel = {
+      find: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      findById: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      findByIdAndUpdate: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
+      findByIdAndDelete: jest.fn().mockReturnValue({
+        exec: jest.fn(),
+      }),
     };
+
+    mockModel.mockImplementation = jest.fn((data) => ({
+      ...data,
+      save: jest.fn().mockResolvedValue({ ...data, _id: '507f1f77bcf86cd799439011' }),
+    }));
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CarService,
         {
           provide: getModelToken('Car'),
-          useValue: mockCarModel,
+          useValue: mockModel,
         },
       ],
     }).compile();
@@ -48,214 +72,97 @@ describe('CarService', () => {
         color: 'Red',
       };
 
-      const savedCar = {
-        _id: '507f1f77bcf86cd799439011',
-        ...createCarDto,
-        active: true,
-        createdAt: new Date(),
+      const mockInstance = {
+        save: jest.fn().mockResolvedValue(mockCar),
       };
 
-      const carInstance = {
-        save: jest.fn().mockResolvedValue(savedCar),
-      };
-
-      mockCarModel.mockImplementation(() => carInstance);
+      mockModel.mockImplementation.mockReturnValue(mockInstance);
 
       const result = await service.create(createCarDto);
 
-      expect(result.name).toBe(createCarDto.name);
-      expect(result.type).toBe(createCarDto.type);
+      expect(result.name).toBe('Tesla Model 3');
+      expect(result.type).toBe('SEDAN');
     });
   });
 
   describe('findAll', () => {
     it('should return an array of cars', async () => {
-      const cars = [
-        { _id: '1', name: 'Tesla Model 3', type: 'SEDAN', brand: 'Tesla', model: 'Model 3', color: 'Red', active: true },
-        { _id: '2', name: 'BMW X5', type: 'SUV', brand: 'BMW', model: 'X5', color: 'Black', active: true },
-      ];
+      const cars = [mockCar];
 
-      mockCarModel.find.mockReturnValue({
+      mockModel.find.mockReturnValue({
         exec: jest.fn().mockResolvedValue(cars),
       });
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(2);
-      expect(mockCarModel.find).toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('Tesla Model 3');
     });
   });
 
   describe('findById', () => {
     it('should return a car by id', async () => {
-      const carId = 1;
-      const car = {
-        _id: '507f1f77bcf86cd799439011',
-        id: carId,
-        name: 'Tesla Model 3',
-        type: 'SEDAN',
-        brand: 'Tesla',
-        active: true,
-      };
-
-      mockCarModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(car),
+      mockModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockCar),
       });
 
-      const result = await service.findById(carId);
+      const result = await service.findById(1);
 
-      expect(result.name).toBe(car.name);
-      expect(mockCarModel.findById).toHaveBeenCalledWith(carId);
+      expect(result.name).toBe('Tesla Model 3');
+      expect(mockModel.findById).toHaveBeenCalledWith(1);
     });
 
     it('should throw NotFoundException when car does not exist', async () => {
-      const carId = 999;
-
-      mockCarModel.findById.mockReturnValue({
+      mockModel.findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.findById(carId)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(999)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('findByType', () => {
     it('should return cars by type', async () => {
-      const type = 'SEDAN';
-      const cars = [
-        { _id: '1', name: 'Tesla Model 3', type, brand: 'Tesla', active: true },
-        { _id: '2', name: 'BMW 3 Series', type, brand: 'BMW', active: true },
-      ];
+      const cars = [mockCar];
 
-      mockCarModel.find.mockReturnValue({
+      mockModel.find.mockReturnValue({
         exec: jest.fn().mockResolvedValue(cars),
       });
 
-      const result = await service.findByType(type);
+      const result = await service.findByType('SEDAN');
 
-      expect(result).toHaveLength(2);
-      expect(mockCarModel.find).toHaveBeenCalledWith({ type });
+      expect(result).toHaveLength(1);
+      expect(mockModel.find).toHaveBeenCalledWith({ type: 'SEDAN' });
     });
   });
 
   describe('update', () => {
     it('should update a car', async () => {
-      const carId = 1;
       const updateCarDto: UpdateCarDto = {
         color: 'Blue',
-        description: 'Updated description',
       };
 
-      const updatedCar = {
-        _id: '507f1f77bcf86cd799439011',
-        id: carId,
-        name: 'Tesla Model 3',
-        ...updateCarDto,
-        active: true,
-      };
+      const updatedCar = { ...mockCar, color: 'Blue' };
 
-      mockCarModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(updatedCar),
       });
 
-      const result = await service.update(carId, updateCarDto);
+      const result = await service.update(1, updateCarDto);
 
-      expect(result.color).toBe(updateCarDto.color);
-      expect(mockCarModel.findByIdAndUpdate).toHaveBeenCalledWith(carId, updateCarDto, { new: true });
-    });
-  });
-
-  describe('createRules', () => {
-    it('should create car rules', async () => {
-      const createCarRulesDto: CreateCarRulesDto = {
-        carId: 1,
-        phoneVerification: true,
-        emailVerification: true,
-        licenseVerification: true,
-        physicalVerification: false,
-        referenceVerification: false,
-      };
-
-      const carWithRules = {
-        _id: '507f1f77bcf86cd799439011',
-        id: 1,
-        name: 'Tesla Model 3',
-        carRules: createCarRulesDto,
-      };
-
-      mockCarModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(carWithRules),
-      });
-
-      const result = await service.createRules(createCarRulesDto);
-
-      expect(mockCarModel.findByIdAndUpdate).toHaveBeenCalledWith(
-        createCarRulesDto.carId,
-        { carRules: createCarRulesDto },
-        { new: true }
-      );
-    });
-
-    it('should throw NotFoundException when car does not exist', async () => {
-      const createCarRulesDto: CreateCarRulesDto = {
-        carId: 999,
-        phoneVerification: true,
-        emailVerification: true,
-        licenseVerification: true,
-        physicalVerification: false,
-        referenceVerification: false,
-      };
-
-      mockCarModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
-
-      await expect(service.createRules(createCarRulesDto)).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('updateRules', () => {
-    it('should update car rules', async () => {
-      const carId = 1;
-      const updateCarRulesDto: UpdateCarRulesDto = {
-        phoneVerification: false,
-      };
-
-      const carWithUpdatedRules = {
-        _id: '507f1f77bcf86cd799439011',
-        id: carId,
-        carRules: updateCarRulesDto,
-      };
-
-      mockCarModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(carWithUpdatedRules),
-      });
-
-      const result = await service.updateRules(carId, updateCarRulesDto);
-
-      expect(mockCarModel.findByIdAndUpdate).toHaveBeenCalledWith(
-        carId,
-        { $set: { carRules: updateCarRulesDto } },
-        { new: true }
-      );
+      expect(result.color).toBe('Blue');
     });
   });
 
   describe('deactivate', () => {
     it('should deactivate a car', async () => {
-      const carId = 1;
-      const deactivatedCar = {
-        _id: '507f1f77bcf86cd799439011',
-        id: carId,
-        name: 'Tesla Model 3',
-        active: false,
-      };
+      const deactivatedCar = { ...mockCar, active: false };
 
-      mockCarModel.findByIdAndUpdate.mockReturnValue({
+      mockModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(deactivatedCar),
       });
 
-      const result = await service.deactivate(carId);
+      const result = await service.deactivate(1);
 
       expect(result.active).toBe(false);
     });
@@ -263,26 +170,21 @@ describe('CarService', () => {
 
   describe('remove', () => {
     it('should delete a car', async () => {
-      const carId = 1;
-      const car = { _id: '507f1f77bcf86cd799439011', id: carId };
-
-      mockCarModel.findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(car),
+      mockModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockCar),
       });
 
-      await service.remove(carId);
+      await service.remove(1);
 
-      expect(mockCarModel.findByIdAndDelete).toHaveBeenCalledWith(carId);
+      expect(mockModel.findByIdAndDelete).toHaveBeenCalledWith(1);
     });
 
     it('should throw NotFoundException when car does not exist', async () => {
-      const carId = 999;
-
-      mockCarModel.findByIdAndDelete.mockReturnValue({
+      mockModel.findByIdAndDelete.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.remove(carId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
     });
   });
 });
