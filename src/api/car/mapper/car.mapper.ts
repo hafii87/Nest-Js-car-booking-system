@@ -10,7 +10,7 @@ export class CarMapper {
       description: car.description,
       type: car.type,
       brand: car.brand,
-      model: car.model,
+      carModel: car.carModel,
       color: car.color,
       active: car.active,
     };
@@ -23,7 +23,7 @@ export class CarMapper {
       description: car.description,
       type: car.type,
       brand: car.brand,
-      model: car.model,
+      carModel: car.carModel,
       color: car.color,
       carRules: car.rules || {},
     };
@@ -35,7 +35,7 @@ export class CarMapper {
       description: createCarDto.description,
       type: createCarDto.type,
       brand: createCarDto.brand,
-      model: createCarDto.model,
+      carModel: createCarDto.carModel,
       color: createCarDto.color,
       active: true,
       createdAt: new Date(),

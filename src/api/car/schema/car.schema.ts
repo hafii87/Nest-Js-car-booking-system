@@ -16,6 +16,9 @@ export class Car extends Document {
   brand!: string;
 
   @Prop({ required: true })
+  carModel!: string;  
+
+  @Prop({ required: true })
   color!: string;
 
   @Prop({ default: true })

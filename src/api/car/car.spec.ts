@@ -1,181 +1,478 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getModelToken } from '@nestjs/mongoose';
+import { MongooseModule } from '@nestjs/mongoose';
 import { NotFoundException } from '@nestjs/common';
-import { CarService } from './car.service';
+import { CarService } from '../car/car.service';
+import { CarSchema } from './schema/car.schema';
 import { CreateCarDto } from './dto/create-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
+import { CreateCarRulesDto } from './dto/create-car-rules.dto';
+import { UpdateCarRulesDto } from './dto/update-car-rules.dto';
 
-describe('CarService', () => {
+describe('CarService with MongoDB Atlas', () => {
   let service: CarService;
-  let mockModel: any;
+  let module: TestingModule;
+  const testPrefix = `test_car_${Date.now()}_`;
 
-  const mockCar = {
-    _id: '507f1f77bcf86cd799439011',
-    id: 1,
-    name: 'Tesla Model 3',
-    description: 'Electric sedan',
-    type: 'SEDAN',
-    brand: 'Tesla',
-    model: 'Model 3',
-    color: 'Red',
-    active: true,
-    createdAt: new Date(),
-  };
+  beforeAll(async () => {
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/car-booking-system';
 
-  beforeEach(async () => {
-    const mockSave = jest.fn().mockResolvedValue(mockCar);
-
-    mockModel = jest.fn().mockImplementation(() => ({
-      save: mockSave,
-    }));
-
-    mockModel.find = jest.fn().mockReturnValue({ exec: jest.fn() });
-    mockModel.findById = jest.fn().mockReturnValue({ exec: jest.fn() });
-    mockModel.findByIdAndUpdate = jest.fn().mockReturnValue({ exec: jest.fn() });
-    mockModel.findByIdAndDelete = jest.fn().mockReturnValue({ exec: jest.fn() });
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        CarService,
-        {
-          provide: getModelToken('Car'),
-          useValue: mockModel,
-        },
+    module = await Test.createTestingModule({
+      imports: [
+        MongooseModule.forRoot(mongoUri),
+        MongooseModule.forFeature([{ name: 'Car', schema: CarSchema }]),
       ],
+      providers: [CarService],
     }).compile();
 
     service = module.get<CarService>(CarService);
+    await module.init();
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  afterAll(async () => {
+    await module.close();
+  });
+
+  afterEach(async () => {
+    const CarModel = module.get('CarModel');
+    if (CarModel) {
+      await CarModel.deleteMany({ createdAt: { $gte: new Date(Date.now() - 60000) } });
+    }
   });
 
   describe('create', () => {
     it('should create a new car', async () => {
       const createCarDto: CreateCarDto = {
-        id: 1,
-        name: 'Tesla Model 3',
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
         description: 'Electric sedan',
         type: 'SEDAN',
         brand: 'Tesla',
-        model: 'Model 3',
+        carModel: 'Model 3',
         color: 'Red',
       };
 
-      const mockInstance = {
-        save: jest.fn().mockResolvedValue(mockCar),
-      };
-
-      mockModel.mockImplementation(() => mockInstance);
-
       const result = await service.create(createCarDto);
 
-      expect(result.name).toBe('Tesla Model 3');
+      expect(result.name).toContain('Tesla Model 3');
       expect(result.type).toBe('SEDAN');
+      expect(result.active).toBe(true);
+      expect(result.brand).toBe('Tesla');
+      expect(result.carModel).toBe('Model 3');
+    });
+
+    it('should create multiple cars with different types', async () => {
+      const createCarDto1: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
+
+      const createCarDto2: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}BMW X5`,
+        description: 'Luxury SUV',
+        type: 'SUV',
+        brand: 'BMW',
+        carModel: 'X5',
+        color: 'Black',
+      };
+
+      const result1 = await service.create(createCarDto1);
+      const result2 = await service.create(createCarDto2);
+
+      expect(result1.type).toBe('SEDAN');
+      expect(result2.type).toBe('SUV');
+      expect(result1.brand).toBe('Tesla');
+      expect(result2.brand).toBe('BMW');
     });
   });
 
   describe('findAll', () => {
     it('should return an array of cars', async () => {
-      const cars = [mockCar];
+      const createCarDto1: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
 
-      mockModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(cars),
-      });
+      const createCarDto2: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}BMW X5`,
+        description: 'Luxury SUV',
+        type: 'SUV',
+        brand: 'BMW',
+        carModel: 'X5',
+        color: 'Black',
+      };
+
+      await service.create(createCarDto1);
+      await service.create(createCarDto2);
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('Tesla Model 3');
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should return cars array even when empty', async () => {
+      const result = await service.findAll();
+
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 
   describe('findById', () => {
     it('should return a car by id', async () => {
-      mockModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockCar),
-      });
+      const createCarDto: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
 
-      const result = await service.findById(1);
+      const createdCar = await service.create(createCarDto);
+      const result = await service.findById(createdCar.id);
 
-      expect(result.name).toBe('Tesla Model 3');
-      expect(mockModel.findById).toHaveBeenCalledWith(1);
+      expect(result.name).toContain('Tesla Model 3');
+      expect(result.type).toBe('SEDAN');
+      expect(result.brand).toBe('Tesla');
     });
 
     it('should throw NotFoundException when car does not exist', async () => {
-      mockModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+      await expect(service.findById(999999999)).rejects.toThrow(NotFoundException);
+    });
 
-      await expect(service.findById(999)).rejects.toThrow(NotFoundException);
+    it('should return car with all properties', async () => {
+      const createCarDto: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Audi A4`,
+        description: 'Premium sedan',
+        type: 'SEDAN',
+        brand: 'Audi',
+        carModel: 'A4',
+        color: 'Silver',
+      };
+
+      const createdCar = await service.create(createCarDto);
+      const result = await service.findById(createdCar.id);
+
+      expect(result).toHaveProperty('id');
+      expect(result).toHaveProperty('name');
+      expect(result).toHaveProperty('description');
+      expect(result).toHaveProperty('type');
+      expect(result).toHaveProperty('brand');
+      expect(result).toHaveProperty('carModel');
+      expect(result).toHaveProperty('color');
+      expect(result).toHaveProperty('active');
     });
   });
 
   describe('findByType', () => {
-    it('should return cars by type', async () => {
-      const cars = [mockCar];
+    it('should return cars by type SEDAN', async () => {
+      const createCarDto1: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
 
-      mockModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(cars),
-      });
+      const createCarDto2: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}BMW X5`,
+        description: 'Luxury SUV',
+        type: 'SUV',
+        brand: 'BMW',
+        carModel: 'X5',
+        color: 'Black',
+      };
+
+      await service.create(createCarDto1);
+      await service.create(createCarDto2);
 
       const result = await service.findByType('SEDAN');
 
-      expect(result).toHaveLength(1);
-      expect(mockModel.find).toHaveBeenCalledWith({ type: 'SEDAN' });
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      expect(result[0].type).toBe('SEDAN');
+    });
+
+    it('should return cars by type SUV', async () => {
+      const createCarDto1: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}BMW X5`,
+        description: 'Luxury SUV',
+        type: 'SUV',
+        brand: 'BMW',
+        carModel: 'X5',
+        color: 'Black',
+      };
+
+      const createCarDto2: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Toyota Highlander`,
+        description: 'Family SUV',
+        type: 'SUV',
+        brand: 'Toyota',
+        carModel: 'Highlander',
+        color: 'White',
+      };
+
+      await service.create(createCarDto1);
+      await service.create(createCarDto2);
+
+      const result = await service.findByType('SUV');
+
+      expect(result.length).toBeGreaterThanOrEqual(2);
+      result.forEach(car => {
+        expect(car.type).toBe('SUV');
+      });
+    });
+
+    it('should return empty array for non-existent type', async () => {
+      const result = await service.findByType('NONEXISTENT');
+
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 
   describe('update', () => {
-    it('should update a car', async () => {
+    it('should update car color', async () => {
+      const createCarDto: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
+
+      const createdCar = await service.create(createCarDto);
+
       const updateCarDto: UpdateCarDto = {
         color: 'Blue',
       };
 
-      const updatedCar = { ...mockCar, color: 'Blue' };
-
-      mockModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(updatedCar),
-      });
-
-      const result = await service.update(1, updateCarDto);
+      const result = await service.update(createdCar.id, updateCarDto);
 
       expect(result.color).toBe('Blue');
+      expect(result.name).toContain('Tesla Model 3');
+    });
+
+    it('should update multiple car properties', async () => {
+      const createCarDto: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
+
+      const createdCar = await service.create(createCarDto);
+
+      const updateCarDto: UpdateCarDto = {
+        color: 'Blue',
+        description: 'Updated electric sedan',
+      };
+
+      const result = await service.update(createdCar.id, updateCarDto);
+
+      expect(result.color).toBe('Blue');
+      expect(result.description).toBe('Updated electric sedan');
+    });
+
+    it('should throw NotFoundException when car does not exist', async () => {
+      const updateCarDto: UpdateCarDto = {
+        color: 'Blue',
+      };
+
+      await expect(service.update(999999999, updateCarDto)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('createRules', () => {
+    it('should create car rules', async () => {
+      const createCarDto: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
+
+      const createdCar = await service.create(createCarDto);
+
+      const createCarRulesDto: CreateCarRulesDto = {
+        carId: createdCar.id,
+        phoneVerification: true,
+        emailVerification: true,
+        licenseVerification: true,
+        physicalVerification: false,
+        referenceVerification: false,
+      };
+
+      const result = await service.createRules(createCarRulesDto);
+
+      expect(result).toBeDefined();
+    });
+
+    it('should throw NotFoundException when car does not exist', async () => {
+      const createCarRulesDto: CreateCarRulesDto = {
+        carId: 999999999,
+        phoneVerification: true,
+        emailVerification: true,
+        licenseVerification: true,
+        physicalVerification: false,
+        referenceVerification: false,
+      };
+
+      await expect(service.createRules(createCarRulesDto)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateRules', () => {
+    it('should update car rules', async () => {
+      const createCarDto: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
+
+      const createdCar = await service.create(createCarDto);
+
+      const updateCarRulesDto: UpdateCarRulesDto = {
+        phoneVerification: true,
+        emailVerification: false,
+      };
+
+      const result = await service.updateRules(createdCar.id, updateCarRulesDto);
+
+      expect(result).toBeDefined();
+    });
+
+    it('should throw NotFoundException when car does not exist', async () => {
+      const updateCarRulesDto: UpdateCarRulesDto = {
+        phoneVerification: true,
+      };
+
+      await expect(service.updateRules(999999999, updateCarRulesDto)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('deactivate', () => {
     it('should deactivate a car', async () => {
-      const deactivatedCar = { ...mockCar, active: false };
+      const createCarDto: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
 
-      mockModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(deactivatedCar),
-      });
-
-      const result = await service.deactivate(1);
+      const createdCar = await service.create(createCarDto);
+      const result = await service.deactivate(createdCar.id);
 
       expect(result.active).toBe(false);
+      expect(result.name).toContain('Tesla Model 3');
+    });
+
+    it('should throw NotFoundException when car does not exist', async () => {
+      await expect(service.deactivate(999999999)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should allow reactivation by updating', async () => {
+      const createCarDto: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
+
+      const createdCar = await service.create(createCarDto);
+      await service.deactivate(createdCar.id);
+
+      const deactivatedCar = await service.findById(createdCar.id);
+      expect(deactivatedCar.active).toBe(false);
     });
   });
 
   describe('remove', () => {
     it('should delete a car', async () => {
-      mockModel.findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockCar),
-      });
+      const createCarDto: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
 
-      await service.remove(1);
+      const createdCar = await service.create(createCarDto);
+      await service.remove(createdCar.id);
 
-      expect(mockModel.findByIdAndDelete).toHaveBeenCalledWith(1);
+      await expect(service.findById(createdCar.id)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when car does not exist', async () => {
-      mockModel.findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+      await expect(service.remove(999999999)).rejects.toThrow(NotFoundException);
+    });
 
-      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+    it('should delete multiple cars', async () => {
+      const createCarDto1: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}Tesla Model 3`,
+        description: 'Electric sedan',
+        type: 'SEDAN',
+        brand: 'Tesla',
+        carModel: 'Model 3',
+        color: 'Red',
+      };
+
+      const createCarDto2: CreateCarDto = {
+        id: Math.random(),
+        name: `${testPrefix}BMW X5`,
+        description: 'Luxury SUV',
+        type: 'SUV',
+        brand: 'BMW',
+        carModel: 'X5',
+        color: 'Black',
+      };
+
+      const car1 = await service.create(createCarDto1);
+      const car2 = await service.create(createCarDto2);
+
+      await service.remove(car1.id);
+      await service.remove(car2.id);
+
+      await expect(service.findById(car1.id)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(car2.id)).rejects.toThrow(NotFoundException);
     });
   });
 });

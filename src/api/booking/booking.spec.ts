@@ -1,74 +1,50 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getModelToken } from '@nestjs/mongoose';
+import { MongooseModule } from '@nestjs/mongoose';
 import { NotFoundException } from '@nestjs/common';
 import { BookingService } from '../booking/booking.service';
+import { BookingSchema } from './schema/booking.schema';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
 import { EndBookingDto } from './dto/end-booking.dto';
 
-describe('BookingService', () => {
+describe('BookingService with MongoDB Atlas', () => {
   let service: BookingService;
-  let mockModel: any;
+  let module: TestingModule;
+  const testPrefix = `test_booking_${Date.now()}_`;
 
-  const mockBooking = {
-    _id: '507f1f77bcf86cd799439011',
-    id: 1,
-    userId: 1,
-    carId: 1,
-    startDate: new Date('2024-01-01'),
-    endDate: new Date('2024-01-05'),
-    status: 'PENDING',
-    active: true,
-    createdAt: new Date(),
-  };
+  beforeAll(async () => {
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/car-booking-system';
 
-  beforeEach(async () => {
-    // Mock the constructor to return an instance with save method
-    mockModel = jest.fn().mockImplementation(() => ({
-      save: jest.fn().mockResolvedValue(mockBooking),
-    }));
-
-    // Add query methods to the mock function
-    mockModel.find = jest.fn().mockReturnValue({
-      exec: jest.fn().mockResolvedValue([mockBooking]),
-    });
-
-    mockModel.findById = jest.fn().mockReturnValue({
-      exec: jest.fn().mockResolvedValue(mockBooking),
-    });
-
-    mockModel.findByIdAndUpdate = jest.fn().mockReturnValue({
-      exec: jest.fn().mockResolvedValue(mockBooking),
-    });
-
-    mockModel.findByIdAndDelete = jest.fn().mockReturnValue({
-      exec: jest.fn().mockResolvedValue(mockBooking),
-    });
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        BookingService,
-        {
-          provide: getModelToken('Booking'),
-          useValue: mockModel,
-        },
+    module = await Test.createTestingModule({
+      imports: [
+        MongooseModule.forRoot(mongoUri),
+        MongooseModule.forFeature([{ name: 'Booking', schema: BookingSchema }]),
       ],
+      providers: [BookingService],
     }).compile();
 
     service = module.get<BookingService>(BookingService);
+    await module.init();
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  afterAll(async () => {
+    await module.close();
+  });
+
+  afterEach(async () => {
+    const BookingModel = module.get('BookingModel');
+    if (BookingModel) {
+      await BookingModel.deleteMany({ createdAt: { $gte: new Date(Date.now() - 60000) } });
+    }
   });
 
   describe('create', () => {
     it('should create a new booking', async () => {
       const createBookingDto: CreateBookingDto = {
-        id: 1,
-        userId: 1,
-        carId: 1,
+        id: Math.random(),
+        userId: Math.floor(Math.random() * 1000),
+        carId: Math.floor(Math.random() * 1000),
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-01-05'),
         status: 'PENDING',
@@ -79,90 +55,149 @@ describe('BookingService', () => {
       expect(result.userId).toBe(createBookingDto.userId);
       expect(result.carId).toBe(createBookingDto.carId);
       expect(result.status).toBe(createBookingDto.status);
+      expect(result.active).toBe(true);
     });
   });
 
   describe('findAll', () => {
     it('should return an array of bookings', async () => {
+      const createBookingDto1: CreateBookingDto = {
+        id: Math.random(),
+        userId: Math.floor(Math.random() * 1000),
+        carId: Math.floor(Math.random() * 1000),
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-05'),
+        status: 'PENDING',
+      };
+
+      const createBookingDto2: CreateBookingDto = {
+        id: Math.random(),
+        userId: Math.floor(Math.random() * 1000),
+        carId: Math.floor(Math.random() * 1000),
+        startDate: new Date('2024-02-01'),
+        endDate: new Date('2024-02-05'),
+        status: 'CONFIRMED',
+      };
+
+      await service.create(createBookingDto1);
+      await service.create(createBookingDto2);
+
       const result = await service.findAll();
 
-      expect(result).toHaveLength(1);
-      expect(mockModel.find).toHaveBeenCalled();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should return bookings array', async () => {
+      const result = await service.findAll();
+
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 
   describe('findById', () => {
     it('should return a booking by id', async () => {
-      mockModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockBooking),
-      });
+      const createBookingDto: CreateBookingDto = {
+        id: Math.random(),
+        userId: Math.floor(Math.random() * 1000),
+        carId: Math.floor(Math.random() * 1000),
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-05'),
+        status: 'PENDING',
+      };
 
-      const result = await service.findById(1);
+      const createdBooking = await service.create(createBookingDto);
+      const result = await service.findById(createdBooking.id);
 
-      expect(result.userId).toBe(1);
-      expect(mockModel.findById).toHaveBeenCalledWith(1);
+      expect(result.userId).toBe(createBookingDto.userId);
+      expect(result.carId).toBe(createBookingDto.carId);
     });
 
     it('should throw NotFoundException when booking does not exist', async () => {
-      mockModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
-
-      await expect(service.findById(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(999999999)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('findByUserId', () => {
     it('should return bookings for a user', async () => {
-      mockModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([mockBooking]),
-      });
+      const userId = Math.floor(Math.random() * 1000);
 
-      const result = await service.findByUserId(1);
+      const createBookingDto1: CreateBookingDto = {
+        id: Math.random(),
+        userId: userId,
+        carId: Math.floor(Math.random() * 1000),
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-05'),
+        status: 'PENDING',
+      };
 
-      expect(result).toHaveLength(1);
-      expect(result[0].userId).toBe(1);
+      const createBookingDto2: CreateBookingDto = {
+        id: Math.random(),
+        userId: userId,
+        carId: Math.floor(Math.random() * 1000),
+        startDate: new Date('2024-02-01'),
+        endDate: new Date('2024-02-05'),
+        status: 'CONFIRMED',
+      };
+
+      await service.create(createBookingDto1);
+      await service.create(createBookingDto2);
+
+      const result = await service.findByUserId(userId);
+
+      expect(result.length).toBeGreaterThanOrEqual(2);
+      expect(result[0].userId).toBe(userId);
     });
   });
 
   describe('update', () => {
     it('should update a booking', async () => {
+      const createBookingDto: CreateBookingDto = {
+        id: Math.random(),
+        userId: Math.floor(Math.random() * 1000),
+        carId: Math.floor(Math.random() * 1000),
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-05'),
+        status: 'PENDING',
+      };
+
+      const createdBooking = await service.create(createBookingDto);
+
       const updateBookingDto: UpdateBookingDto = {
         status: 'CONFIRMED',
       };
 
-      const updatedBooking = { ...mockBooking, status: 'CONFIRMED' };
-
-      mockModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(updatedBooking),
-      });
-
-      const result = await service.update(1, updateBookingDto);
+      const result = await service.update(createdBooking.id, updateBookingDto);
 
       expect(result.status).toBe('CONFIRMED');
     });
 
     it('should throw NotFoundException when booking does not exist', async () => {
-      mockModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+      const updateBookingDto: UpdateBookingDto = {
+        status: 'CONFIRMED',
+      };
 
-      await expect(service.update(999, {})).rejects.toThrow(NotFoundException);
+      await expect(service.update(999999999, updateBookingDto)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('cancel', () => {
     it('should cancel a booking', async () => {
-      const cancelBookingDto: CancelBookingDto = {
-        id: '1',
-        reason: 'User request',
+      const createBookingDto: CreateBookingDto = {
+        id: Math.random(),
+        userId: Math.floor(Math.random() * 1000),
+        carId: Math.floor(Math.random() * 1000),
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-05'),
+        status: 'PENDING',
       };
 
-      const cancelledBooking = { ...mockBooking, status: 'CANCELLED', active: false };
+      const createdBooking = await service.create(createBookingDto);
 
-      mockModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(cancelledBooking),
-      });
+      const cancelBookingDto: CancelBookingDto = {
+        id: String(createdBooking.id),
+        reason: 'User request',
+      };
 
       const result = await service.cancel(cancelBookingDto);
 
@@ -171,26 +206,31 @@ describe('BookingService', () => {
     });
 
     it('should throw NotFoundException when booking does not exist', async () => {
-      mockModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+      const cancelBookingDto: CancelBookingDto = {
+        id: '999999999',
+      };
 
-      await expect(service.cancel({ id: '999' })).rejects.toThrow(NotFoundException);
+      await expect(service.cancel(cancelBookingDto)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('end', () => {
     it('should end a booking', async () => {
-      const endBookingDto: EndBookingDto = {
-        id: 1,
-        reason: 'Journey completed',
+      const createBookingDto: CreateBookingDto = {
+        id: Math.random(),
+        userId: Math.floor(Math.random() * 1000),
+        carId: Math.floor(Math.random() * 1000),
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-05'),
+        status: 'ACTIVE',
       };
 
-      const endedBooking = { ...mockBooking, status: 'ENDED', active: false };
+      const createdBooking = await service.create(createBookingDto);
 
-      mockModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(endedBooking),
-      });
+      const endBookingDto: EndBookingDto = {
+        id: createdBooking.id,
+        reason: 'Journey completed',
+      };
 
       const result = await service.end(endBookingDto);
 
@@ -199,31 +239,33 @@ describe('BookingService', () => {
     });
 
     it('should throw NotFoundException when booking does not exist', async () => {
-      mockModel.findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+      const endBookingDto: EndBookingDto = {
+        id: 999999999,
+      };
 
-      await expect(service.end({ id: 999 })).rejects.toThrow(NotFoundException);
+      await expect(service.end(endBookingDto)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('remove', () => {
     it('should delete a booking', async () => {
-      mockModel.findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockBooking),
-      });
+      const createBookingDto: CreateBookingDto = {
+        id: Math.random(),
+        userId: Math.floor(Math.random() * 1000),
+        carId: Math.floor(Math.random() * 1000),
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-01-05'),
+        status: 'PENDING',
+      };
 
-      await service.remove(1);
+      const createdBooking = await service.create(createBookingDto);
+      await service.remove(createdBooking.id);
 
-      expect(mockModel.findByIdAndDelete).toHaveBeenCalledWith(1);
+      await expect(service.findById(createdBooking.id)).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when booking does not exist', async () => {
-      mockModel.findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
-
-      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(999999999)).rejects.toThrow(NotFoundException);
     });
   });
 });

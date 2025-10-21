@@ -3,6 +3,6 @@ export class UpdateCarDto {
   readonly description?: string;
   readonly type?: string;
   readonly brand?: string;
-  readonly model?: string;
+  readonly carModel?: string;
   readonly color?: string;
 }

@@ -14,6 +14,10 @@ import { GroupMapper } from './mapper/group.mapper';
 export class GroupService {
   constructor(@InjectModel('Group') private groupModel: Model<any>) {}
 
+  private isValidObjectId(id: any): boolean {
+    return /^[0-9a-fA-F]{24}$/.test(String(id));
+  }
+
   async create(createGroupDto: CreateGroupDto): Promise<FetchGroupDto> {
     const group = new this.groupModel(GroupMapper.toDomain(createGroupDto));
     const savedGroup = await group.save();
@@ -26,6 +30,9 @@ export class GroupService {
   }
 
   async findById(id: number): Promise<FetchGroupDto> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Group with ID ${id} not found`);
+    }
     const group = await this.groupModel.findById(id).exec();
     if (!group) {
       throw new NotFoundException(`Group with ID ${id} not found`);
@@ -39,6 +46,9 @@ export class GroupService {
   }
 
   async update(id: number, updateGroupDto: UpdateGroupDto): Promise<FetchGroupDto> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Group with ID ${id} not found`);
+    }
     const group = await this.groupModel.findByIdAndUpdate(id, updateGroupDto, { new: true }).exec();
     if (!group) {
       throw new NotFoundException(`Group with ID ${id} not found`);
@@ -47,6 +57,9 @@ export class GroupService {
   }
 
   async createRules(createGroupRulesDto: CreateGroupRulesDto): Promise<any> {
+    if (!this.isValidObjectId(createGroupRulesDto.groupId)) {
+      throw new NotFoundException(`Group with ID ${createGroupRulesDto.groupId} not found`);
+    }
     const group = await this.groupModel.findByIdAndUpdate(
       createGroupRulesDto.groupId,
       { groupRules: createGroupRulesDto },
@@ -59,6 +72,9 @@ export class GroupService {
   }
 
   async updateRules(groupId: number, updateGroupRulesDto: UpdateGroupRulesDto): Promise<any> {
+    if (!this.isValidObjectId(groupId)) {
+      throw new NotFoundException(`Group with ID ${groupId} not found`);
+    }
     const group = await this.groupModel.findByIdAndUpdate(
       groupId,
       { $set: { 'groupRules': updateGroupRulesDto } },
@@ -71,6 +87,9 @@ export class GroupService {
   }
 
   async addUserToGroup(addUserToGroupDto: AddUserToGroupDto): Promise<any> {
+    if (!this.isValidObjectId(addUserToGroupDto.groupId)) {
+      throw new NotFoundException(`Group with ID ${addUserToGroupDto.groupId} not found`);
+    }
     const group = await this.groupModel.findByIdAndUpdate(
       addUserToGroupDto.groupId,
       { $addToSet: { users: addUserToGroupDto.userId } },
@@ -83,6 +102,9 @@ export class GroupService {
   }
 
   async removeUserFromGroup(removeUserFromGroupDto: RemoveUserFromGroupDto): Promise<any> {
+    if (!this.isValidObjectId(removeUserFromGroupDto.groupId)) {
+      throw new NotFoundException(`Group with ID ${removeUserFromGroupDto.groupId} not found`);
+    }
     const group = await this.groupModel.findByIdAndUpdate(
       removeUserFromGroupDto.groupId,
       { $pull: { users: removeUserFromGroupDto.userId } },
@@ -95,6 +117,9 @@ export class GroupService {
   }
 
   async remove(id: number): Promise<void> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Group with ID ${id} not found`);
+    }
     const group = await this.groupModel.findByIdAndDelete(id).exec();
     if (!group) {
       throw new NotFoundException(`Group with ID ${id} not found`);
@@ -102,6 +127,9 @@ export class GroupService {
   }
 
   async deactivate(id: number): Promise<FetchGroupDto> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Group with ID ${id} not found`);
+    }
     const group = await this.groupModel.findByIdAndUpdate(id, { active: false }, { new: true }).exec();
     if (!group) {
       throw new NotFoundException(`Group with ID ${id} not found`);

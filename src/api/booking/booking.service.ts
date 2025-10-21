@@ -12,6 +12,10 @@ import { BookingMapper } from './mapper/booking.mapper';
 export class BookingService {
   constructor(@InjectModel('Booking') private bookingModel: Model<any>) {}
 
+  private isValidObjectId(id: any): boolean {
+    return /^[0-9a-fA-F]{24}$/.test(String(id));
+  }
+
   async create(createBookingDto: CreateBookingDto): Promise<FetchBookingDto> {
     const booking = new this.bookingModel(BookingMapper.toDomain(createBookingDto));
     const savedBooking = await booking.save();
@@ -24,6 +28,9 @@ export class BookingService {
   }
 
   async findById(id: number): Promise<FetchBookingDto> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Booking with ID ${id} not found`);
+    }
     const booking = await this.bookingModel.findById(id).exec();
     if (!booking) {
       throw new NotFoundException(`Booking with ID ${id} not found`);
@@ -37,6 +44,9 @@ export class BookingService {
   }
 
   async update(id: number, updateBookingDto: UpdateBookingDto): Promise<FetchBookingDto> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Booking with ID ${id} not found`);
+    }
     const booking = await this.bookingModel.findByIdAndUpdate(id, updateBookingDto, { new: true }).exec();
     if (!booking) {
       throw new NotFoundException(`Booking with ID ${id} not found`);
@@ -45,18 +55,25 @@ export class BookingService {
   }
 
   async cancel(cancelBookingDto: CancelBookingDto): Promise<FetchBookingDto> {
+    const bookingId = cancelBookingDto.id;
+    if (!this.isValidObjectId(bookingId)) {
+      throw new NotFoundException(`Booking with ID ${bookingId} not found`);
+    }
     const booking = await this.bookingModel.findByIdAndUpdate(
-      cancelBookingDto.id,
+      bookingId,
       { status: 'CANCELLED', active: false },
       { new: true }
     ).exec();
     if (!booking) {
-      throw new NotFoundException(`Booking with ID ${cancelBookingDto.id} not found`);
+      throw new NotFoundException(`Booking with ID ${bookingId} not found`);
     }
     return BookingMapper.toFetchBookingDto(booking);
   }
 
   async end(endBookingDto: EndBookingDto): Promise<FetchBookingDto> {
+    if (!this.isValidObjectId(endBookingDto.id)) {
+      throw new NotFoundException(`Booking with ID ${endBookingDto.id} not found`);
+    }
     const booking = await this.bookingModel.findByIdAndUpdate(
       endBookingDto.id,
       { status: 'ENDED', active: false },
@@ -69,6 +86,9 @@ export class BookingService {
   }
 
   async remove(id: number): Promise<void> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Booking with ID ${id} not found`);
+    }
     const booking = await this.bookingModel.findByIdAndDelete(id).exec();
     if (!booking) {
       throw new NotFoundException(`Booking with ID ${id} not found`);

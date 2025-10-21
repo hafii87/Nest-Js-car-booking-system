@@ -12,6 +12,10 @@ import { CarMapper } from './mapper/car.mapper';
 export class CarService {
   constructor(@InjectModel('Car') private carModel: Model<any>) {}
 
+  private isValidObjectId(id: any): boolean {
+    return /^[0-9a-fA-F]{24}$/.test(String(id));
+  }
+
   async create(createCarDto: CreateCarDto): Promise<FetchCarDto> {
     const car = new this.carModel(CarMapper.toDomain(createCarDto));
     const savedCar = await car.save();
@@ -22,7 +26,11 @@ export class CarService {
     const cars = await this.carModel.find().exec();
     return cars.map(car => CarMapper.toFetchCarDto(car));
   }
-   async findById(id: number): Promise<FetchCarDto> {
+
+  async findById(id: number): Promise<FetchCarDto> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Car with ID ${id} not found`);
+    }
     const car = await this.carModel.findById(id).exec();
     if (!car) {
       throw new NotFoundException(`Car with ID ${id} not found`);
@@ -36,6 +44,9 @@ export class CarService {
   }
 
   async update(id: number, updateCarDto: UpdateCarDto): Promise<FetchCarDto> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Car with ID ${id} not found`);
+    }
     const car = await this.carModel.findByIdAndUpdate(id, updateCarDto, { new: true }).exec();
     if (!car) {
       throw new NotFoundException(`Car with ID ${id} not found`);
@@ -44,6 +55,9 @@ export class CarService {
   }
 
   async createRules(createCarRulesDto: CreateCarRulesDto): Promise<any> {
+    if (!this.isValidObjectId(createCarRulesDto.carId)) {
+      throw new NotFoundException(`Car with ID ${createCarRulesDto.carId} not found`);
+    }
     const car = await this.carModel.findByIdAndUpdate(
       createCarRulesDto.carId,
       { carRules: createCarRulesDto },
@@ -56,6 +70,9 @@ export class CarService {
   }
 
   async updateRules(carId: number, updateCarRulesDto: UpdateCarRulesDto): Promise<any> {
+    if (!this.isValidObjectId(carId)) {
+      throw new NotFoundException(`Car with ID ${carId} not found`);
+    }
     const car = await this.carModel.findByIdAndUpdate(
       carId,
       { $set: { 'carRules': updateCarRulesDto } },
@@ -68,6 +85,9 @@ export class CarService {
   }
 
   async remove(id: number): Promise<void> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Car with ID ${id} not found`);
+    }
     const car = await this.carModel.findByIdAndDelete(id).exec();
     if (!car) {
       throw new NotFoundException(`Car with ID ${id} not found`);
@@ -75,6 +95,9 @@ export class CarService {
   }
 
   async deactivate(id: number): Promise<FetchCarDto> {
+    if (!this.isValidObjectId(id)) {
+      throw new NotFoundException(`Car with ID ${id} not found`);
+    }
     const car = await this.carModel.findByIdAndUpdate(id, { active: false }, { new: true }).exec();
     if (!car) {
       throw new NotFoundException(`Car with ID ${id} not found`);

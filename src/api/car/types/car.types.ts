@@ -24,7 +24,7 @@ export interface ICAr {
   description: string;
   type: string;
   brand: string;
-  model: string;
+  carModel: string;
   color: string;
   active: boolean;
   createdAt: Date;

@@ -4,7 +4,7 @@ export interface CarResponse {
   description: string;
   type: string;
   brand: string;
-  model: string;
+  carModel: string;
   color: string;
   active: boolean;
 }
@@ -15,7 +15,7 @@ export interface CarWithRulesResponse {
   description: string;
   type: string;
   brand: string;
-  model: string;
+  carModel: string;
   color: string;
   carRules: {
     phoneVerification: boolean;
