@@ -41,8 +41,8 @@ describe('UserService with MongoDB Atlas', () => {
     it('should create a new user', async () => {
       const createUserDto: CreateUserDto = {
         id: 1,
-        name: 'John Doe',
-        email: `${testPrefix}john@example.com`,
+        name: 'MuhammadHafeez',
+        email: `${testPrefix}hafeez32@gmail.com`,
         phone: '1234567890',
         address: '123 Main St',
       };
@@ -57,8 +57,8 @@ describe('UserService with MongoDB Atlas', () => {
     it('should throw ConflictException if user with email already exists', async () => {
       const createUserDto: CreateUserDto = {
         id: 1,
-        name: 'John Doe',
-        email: `${testPrefix}john_duplicate@example.com`,
+        name: 'MuhammadHafeez',
+        email: `${testPrefix}hafeez32@gmail.com`,
         phone: '1234567890',
       };
 
@@ -72,15 +72,15 @@ describe('UserService with MongoDB Atlas', () => {
     it('should return an array of users', async () => {
       const createUserDto1: CreateUserDto = {
         id: 1,
-        name: 'John Doe',
-        email: `${testPrefix}john_all1@example.com`,
+        name: 'MuhammadHafeez',
+        email: `${testPrefix}hafeez32@gmail.com`,
         phone: '1234567890',
       };
 
       const createUserDto2: CreateUserDto = {
         id: 2,
-        name: 'Jane Doe',
-        email: `${testPrefix}jane_all@example.com`,
+        name: 'MuhammadHafeez',
+        email: `${testPrefix}hafeez32@gmail.com`,
         phone: '0987654321',
       };
 
@@ -103,15 +103,15 @@ describe('UserService with MongoDB Atlas', () => {
     it('should return a user by id', async () => {
       const createUserDto: CreateUserDto = {
         id: 1,
-        name: 'John Doe',
-        email: `${testPrefix}john_byid@example.com`,
+        name: 'MuhammadHafeez',
+        email: `${testPrefix}hafeez32@gmail.com`,
         phone: '1234567890',
       };
 
       const createdUser = await service.create(createUserDto);
       const result = await service.findById(createdUser.id);
 
-      expect(result.name).toBe('John Doe');
+      expect(result.name).toBe('MuhammadHafeez');
       expect(result.email).toBe(createUserDto.email);
     });
 
@@ -122,10 +122,10 @@ describe('UserService with MongoDB Atlas', () => {
 
   describe('findByEmail', () => {
     it('should return a user by email', async () => {
-      const testEmail = `${testPrefix}john_byemail@example.com`;
+      const testEmail = `${testPrefix}hafeez32@gmail.com`;
       const createUserDto: CreateUserDto = {
         id: 1,
-        name: 'John Doe',
+        name: 'MuhammadHafeez',
         email: testEmail,
         phone: '1234567890',
       };
@@ -134,7 +134,7 @@ describe('UserService with MongoDB Atlas', () => {
       const result = await service.findByEmail(testEmail);
 
       expect(result.email).toBe(testEmail);
-      expect(result.name).toBe('John Doe');
+      expect(result.name).toBe('MuhammadHafeez');
     });
 
     it('should throw NotFoundException when email does not exist', async () => {
@@ -146,27 +146,27 @@ describe('UserService with MongoDB Atlas', () => {
     it('should update a user', async () => {
       const createUserDto: CreateUserDto = {
         id: 1,
-        name: 'John Doe',
-        email: `${testPrefix}john_update@example.com`,
+        name: 'MuhammadHafeez',
+        email: `${testPrefix}hafeez32@gmail.com`,
         phone: '1234567890',
       };
 
       const createdUser = await service.create(createUserDto);
 
       const updateUserDto: UpdateUserDto = {
-        name: 'Jane Doe',
+        name: 'MuhammadHafeez',
         phone: '9876543210',
       };
 
       const result = await service.update(createdUser.id, updateUserDto);
 
-      expect(result.name).toBe('Jane Doe');
+      expect(result.name).toBe('MuhammadHafeez');
       expect(result.phone).toBe('9876543210');
     });
 
     it('should throw NotFoundException when user does not exist', async () => {
       const updateUserDto: UpdateUserDto = {
-        name: 'Jane Doe',
+        name: 'MuhammadHafeez',
       };
 
       await expect(service.update(999999999, updateUserDto)).rejects.toThrow(NotFoundException);
@@ -177,8 +177,8 @@ describe('UserService with MongoDB Atlas', () => {
     it('should deactivate a user', async () => {
       const createUserDto: CreateUserDto = {
         id: 1,
-        name: 'John Doe',
-        email: `${testPrefix}john_deactivate@example.com`,
+        name: 'MuhammadHafeez',
+        email: `${testPrefix}hafeez32@gmail.com`,
         phone: '1234567890',
       };
 
@@ -197,8 +197,8 @@ describe('UserService with MongoDB Atlas', () => {
     it('should delete a user', async () => {
       const createUserDto: CreateUserDto = {
         id: 1,
-        name: 'John Doe',
-        email: `${testPrefix}john_remove@example.com`,
+        name: 'MuhammadHafeez',
+        email: `${testPrefix}hafeez32@gmail.com`,
         phone: '1234567890',
       };
 
