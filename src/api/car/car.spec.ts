@@ -23,25 +23,16 @@ describe('CarService', () => {
   };
 
   beforeEach(async () => {
-    mockModel = {
-      find: jest.fn().mockReturnValue({
-        exec: jest.fn(),
-      }),
-      findById: jest.fn().mockReturnValue({
-        exec: jest.fn(),
-      }),
-      findByIdAndUpdate: jest.fn().mockReturnValue({
-        exec: jest.fn(),
-      }),
-      findByIdAndDelete: jest.fn().mockReturnValue({
-        exec: jest.fn(),
-      }),
-    };
+    const mockSave = jest.fn().mockResolvedValue(mockCar);
 
-    mockModel.mockImplementation = jest.fn((data) => ({
-      ...data,
-      save: jest.fn().mockResolvedValue({ ...data, _id: '507f1f77bcf86cd799439011' }),
+    mockModel = jest.fn().mockImplementation(() => ({
+      save: mockSave,
     }));
+
+    mockModel.find = jest.fn().mockReturnValue({ exec: jest.fn() });
+    mockModel.findById = jest.fn().mockReturnValue({ exec: jest.fn() });
+    mockModel.findByIdAndUpdate = jest.fn().mockReturnValue({ exec: jest.fn() });
+    mockModel.findByIdAndDelete = jest.fn().mockReturnValue({ exec: jest.fn() });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -76,7 +67,7 @@ describe('CarService', () => {
         save: jest.fn().mockResolvedValue(mockCar),
       };
 
-      mockModel.mockImplementation.mockReturnValue(mockInstance);
+      mockModel.mockImplementation(() => mockInstance);
 
       const result = await service.create(createCarDto);
 

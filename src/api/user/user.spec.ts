@@ -21,28 +21,24 @@ describe('UserService', () => {
   };
 
   beforeEach(async () => {
-    mockModel = {
-      findOne: jest.fn().mockReturnValue({
-        exec: jest.fn(),
-      }),
-      find: jest.fn().mockReturnValue({
-        exec: jest.fn(),
-      }),
-      findById: jest.fn().mockReturnValue({
-        exec: jest.fn(),
-      }),
-      findByIdAndUpdate: jest.fn().mockReturnValue({
-        exec: jest.fn(),
-      }),
-      findByIdAndDelete: jest.fn().mockReturnValue({
-        exec: jest.fn(),
-      }),
-    };
+    const mockSave = jest.fn().mockResolvedValue(mockUser);
+    
+    // Create a proper constructor function
+    function MockModel(dto: any) {
+      return {
+        ...dto,
+        save: mockSave,
+      };
+    }
+    
+    // Add static methods
+    MockModel.findOne = jest.fn().mockReturnValue({ exec: jest.fn() });
+    MockModel.find = jest.fn().mockReturnValue({ exec: jest.fn() });
+    MockModel.findById = jest.fn().mockReturnValue({ exec: jest.fn() });
+    MockModel.findByIdAndUpdate = jest.fn().mockReturnValue({ exec: jest.fn() });
+    MockModel.findByIdAndDelete = jest.fn().mockReturnValue({ exec: jest.fn() });
 
-    mockModel.mockImplementation = jest.fn((data) => ({
-      ...data,
-      save: jest.fn().mockResolvedValue({ ...data, _id: '507f1f77bcf86cd799439011' }),
-    }));
+    mockModel = MockModel;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -74,12 +70,6 @@ describe('UserService', () => {
       mockModel.findOne.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
-
-      const mockInstance = {
-        save: jest.fn().mockResolvedValue(mockUser),
-      };
-
-      mockModel.mockImplementation.mockReturnValue(mockInstance);
 
       const result = await service.create(createUserDto);
 
