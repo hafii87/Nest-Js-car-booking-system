@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Put, Delete, Body, Param } from "@nestjs/common";
+import { Controller } from "@nestjs/common";
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import { GroupService } from "./group.service";
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
@@ -7,62 +8,62 @@ import { UpdateGroupRulesDto } from './dto/update-group-rules.dto';
 import { AddUserToGroupDto } from './dto/add-user-to-group.dto';
 import { RemoveUserFromGroupDto } from './dto/remove-user-from-group.dto';
 
-@Controller('groups')
+@Controller()
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
-  @Post()
-  async create(@Body() createGroupDto: CreateGroupDto) {
+  @MessagePattern({ cmd: 'create_group' })
+  async create(@Payload() createGroupDto: CreateGroupDto) {
     return this.groupService.create(createGroupDto);
   }
 
-  @Get()
+  @MessagePattern({ cmd: 'find_all_groups' })
   async findAll() {
     return this.groupService.findAll();
   }
 
-  @Get(':id')
-  async findById(@Param('id') id: number) {
+  @MessagePattern({ cmd: 'find_group_by_id' })
+  async findById(@Payload() id: number) {
     return this.groupService.findById(id);
   }
 
-  @Get('creator/:createdBy')
-  async findByCreator(@Param('createdBy') createdBy: number) {
+  @MessagePattern({ cmd: 'find_group_by_creator' })
+  async findByCreator(@Payload() createdBy: number) {
     return this.groupService.findByCreator(createdBy);
   }
 
-  @Put(':id')
-  async update(@Param('id') id: number, @Body() updateGroupDto: UpdateGroupDto) {
-    return this.groupService.update(id, updateGroupDto);
+  @MessagePattern({ cmd: 'update_group' })
+  async update(@Payload() data: { id: number; updateGroupDto: UpdateGroupDto }) {
+    return this.groupService.update(data.id, data.updateGroupDto);
   }
 
-  @Post('rules')
-  async createRules(@Body() createGroupRulesDto: CreateGroupRulesDto) {
+  @MessagePattern({ cmd: 'create_group_rules' })
+  async createRules(@Payload() createGroupRulesDto: CreateGroupRulesDto) {
     return this.groupService.createRules(createGroupRulesDto);
   }
 
-  @Put(':id/rules')
-  async updateRules(@Param('id') id: number, @Body() updateGroupRulesDto: UpdateGroupRulesDto) {
-    return this.groupService.updateRules(id, updateGroupRulesDto);
+  @MessagePattern({ cmd: 'update_group_rules' })
+  async updateRules(@Payload() data: { id: number; updateGroupRulesDto: UpdateGroupRulesDto }) {
+    return this.groupService.updateRules(data.id, data.updateGroupRulesDto);
   }
 
-  @Post('members/add')
-  async addUserToGroup(@Body() addUserToGroupDto: AddUserToGroupDto) {
+  @MessagePattern({ cmd: 'add_user_to_group' })
+  async addUserToGroup(@Payload() addUserToGroupDto: AddUserToGroupDto) {
     return this.groupService.addUserToGroup(addUserToGroupDto);
   }
 
-  @Post('members/remove')
-  async removeUserFromGroup(@Body() removeUserFromGroupDto: RemoveUserFromGroupDto) {
+  @MessagePattern({ cmd: 'remove_user_from_group' })
+  async removeUserFromGroup(@Payload() removeUserFromGroupDto: RemoveUserFromGroupDto) {
     return this.groupService.removeUserFromGroup(removeUserFromGroupDto);
   }
 
-  @Delete(':id')
-  async remove(@Param('id') id: number) {
+  @MessagePattern({ cmd: 'remove_group' })
+  async remove(@Payload() id: number) {
     return this.groupService.remove(id);
   }
 
-  @Post(':id/deactivate')
-  async deactivate(@Param('id') id: number) {
+  @MessagePattern({ cmd: 'deactivate_group' })
+  async deactivate(@Payload() id: number) {
     return this.groupService.deactivate(id);
   }
 }

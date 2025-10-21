@@ -1,56 +1,57 @@
-import { Controller, Post, Get, Put, Delete, Body, Param } from "@nestjs/common";
+import { Controller } from "@nestjs/common";
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CarService } from "./car.service";
 import { CreateCarDto } from './dto/create-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import { CreateCarRulesDto } from './dto/create-car-rules.dto';
 import { UpdateCarRulesDto } from './dto/update-car-rules.dto';
 
-@Controller('cars')
+@Controller()
 export class CarController {
   constructor(private readonly carService: CarService) {}
-  
-  @Post()
-  async create(@Body() createCarDto: CreateCarDto) {
+
+  @MessagePattern({ cmd: 'create_car' })
+  async create(@Payload() createCarDto: CreateCarDto) {
     return this.carService.create(createCarDto);
   }
 
-  @Get()
+  @MessagePattern({ cmd: 'find_all_cars' })
   async findAll() {
     return this.carService.findAll();
   }
 
-  @Get(':id')
-  async findById(@Param('id') id: number) {
+  @MessagePattern({ cmd: 'find_car_by_id' })
+  async findById(@Payload() id: number) {
     return this.carService.findById(id);
   }
 
-  @Get('type/:type')
-  async findByType(@Param('type') type: string) {
+  @MessagePattern({ cmd: 'find_car_by_type' })
+  async findByType(@Payload() type: string) {
     return this.carService.findByType(type);
   }
 
-  @Put(':id')
-  async update(@Param('id') id: number, @Body() updateCarDto: UpdateCarDto) {
-    return this.carService.update(id, updateCarDto);
+  @MessagePattern({ cmd: 'update_car' })
+  async update(@Payload() data: { id: number; updateCarDto: UpdateCarDto }) {
+    return this.carService.update(data.id, data.updateCarDto);
   }
 
-  @Post('rules')
-  async createRules(@Body() createCarRulesDto: CreateCarRulesDto) {
+  @MessagePattern({ cmd: 'create_car_rules' })
+  async createRules(@Payload() createCarRulesDto: CreateCarRulesDto) {
     return this.carService.createRules(createCarRulesDto);
   }
 
-  @Put('rules/:carId')
-  async updateRules(@Param('carId') carId: number, @Body() updateCarRulesDto: UpdateCarRulesDto) {
-    return this.carService.updateRules(carId, updateCarRulesDto);
+  @MessagePattern({ cmd: 'update_car_rules' })
+  async updateRules(@Payload() data: { carId: number; updateCarRulesDto: UpdateCarRulesDto }) {
+    return this.carService.updateRules(data.carId, data.updateCarRulesDto);
   }
 
-  @Delete(':id')
-  async remove(@Param('id') id: number) {
+  @MessagePattern({ cmd: 'remove_car' })
+  async remove(@Payload() id: number) {
     return this.carService.remove(id);
   }
 
-  @Post(':id/deactivate')
-  async deactivate(@Param('id') id: number) {
+  @MessagePattern({ cmd: 'deactivate_car' })
+  async deactivate(@Payload() id: number) {
     return this.carService.deactivate(id);
   }
 }
