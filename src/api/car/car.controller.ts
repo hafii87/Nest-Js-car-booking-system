@@ -1,6 +1,6 @@
-import { Controller } from "@nestjs/common";
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { CarService } from "./car.service";
+import { CarService } from './car.service';
 import { CreateCarDto } from './dto/create-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import { CreateCarRulesDto } from './dto/create-car-rules.dto';
@@ -41,7 +41,9 @@ export class CarController {
   }
 
   @MessagePattern({ cmd: 'update_car_rules' })
-  async updateRules(@Payload() data: { carId: number; updateCarRulesDto: UpdateCarRulesDto }) {
+  async updateRules(
+    @Payload() data: { carId: number; updateCarRulesDto: UpdateCarRulesDto },
+  ) {
     return this.carService.updateRules(data.carId, data.updateCarRulesDto);
   }
 

@@ -1,6 +1,6 @@
-import { Controller } from "@nestjs/common";
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { GroupService } from "./group.service";
+import { GroupService } from './group.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { CreateGroupRulesDto } from './dto/create-group-rules.dto';
@@ -43,7 +43,9 @@ export class GroupController {
   }
 
   @MessagePattern({ cmd: 'update_group_rules' })
-  async updateRules(@Payload() data: { id: number; updateGroupRulesDto: UpdateGroupRulesDto }) {
+  async updateRules(
+    @Payload() data: { id: number; updateGroupRulesDto: UpdateGroupRulesDto },
+  ) {
     return this.groupService.updateRules(data.id, data.updateGroupRulesDto);
   }
 
