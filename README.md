@@ -1,3 +1,150 @@
+
+# 🚗 Car Booking System
+
+A scalable microservices-based car booking platform built with NestJS and MongoDB. The system allows users to book cars, manage groups, and handle bookings through a clean REST API gateway.
+
+---
+
+## 📋 Features
+
+- **User Management** – Create, update, deactivate, and delete users; lookup by email or ID
+- **Car Management** – CRUD operations for cars, car rules (verification requirements), and deactivation
+- **Booking Management** – Create, update, cancel, end, and remove bookings with status tracking
+- **Group Management** – Create groups, manage members, assign group rules, and track group bookings
+- **Microservices Architecture** – Each domain runs as an independent TCP microservice
+- **API Gateway** – Single HTTP entry point that routes requests to the appropriate microservice
+- **MongoDB Integration** – Mongoose ODM with schema-based models for all entities
+
+---
+
+## 🛠 Technologies Used
+
+| Technology | Purpose |
+|---|---|
+| [NestJS](https://nestjs.com/) | Backend framework |
+| [MongoDB](https://www.mongodb.com/) | Database |
+| [Mongoose](https://mongoosejs.com/) | ODM for MongoDB |
+| TypeScript | Language |
+| NestJS Microservices (TCP) | Inter-service communication |
+| Jest | Unit & integration testing |
+| class-validator / class-transformer | DTO validation |
+
+---
+
+## ⚙️ Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd car-booking-system
+
+# Install dependencies
+npm install
+```
+
+Ensure MongoDB is running locally or set the `MONGODB_URI` environment variable:
+
+```bash
+export MONGODB_URI=mongodb://localhost:27017/car-booking-system
+# or use MongoDB Atlas
+export MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/car-booking-system
+```
+
+---
+
+## ▶️ Running the Project
+
+### Development (All services concurrently)
+
+```bash
+npm run dev
+```
+
+### Individual Services
+
+```bash
+# API Gateway (HTTP on port 3000)
+npm run start:gateway
+
+# User Microservice (TCP port 8879)
+npm run start:user
+
+# Car Microservice (TCP port 8878)
+npm run start:car
+
+# Booking Microservice (TCP port 8877)
+npm run start:booking
+
+# Group Microservice (TCP port 8880)
+npm run start:group
+```
+
+### Production
+
+```bash
+npm run build
+npm run start:prod
+```
+
+### Tests
+
+```bash
+npm run test          # Unit tests
+npm run test:cov      # Coverage report
+npm run test:e2e      # End-to-end tests
+```
+
+---
+
+## 🌐 API Endpoints
+
+| Resource | Base Path |
+|---|---|
+| Users | `GET/POST/PUT/DELETE /api/users` |
+| Cars | `GET/POST/PUT/DELETE /api/cars` |
+| Bookings | `GET/POST/PUT/DELETE /api/bookings` |
+| Groups | `GET/POST/PUT/DELETE /api/groups` |
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── api/
+│   ├── booking/          # Booking module (controller, service, DTOs, schema)
+│   ├── car/              # Car module (controller, service, DTOs, schema)
+│   ├── group/            # Group module (controller, service, DTOs, schema)
+│   ├── user/             # User module (controller, service, DTOs, schema)
+│   └── gateway/          # HTTP API Gateway (routes to microservices via TCP)
+├── microservices/        # Entry points for each microservice
+│   ├── booking.microservice.ts
+│   ├── car.microservice.ts
+│   ├── group.microservice.ts
+│   └── user.microservice.ts
+├── app.module.ts
+├── app.controller.ts
+├── app.service.ts
+└── main.ts
+test/                     # E2E tests
+```
+
+---
+
+## 🔌 Service Ports
+
+| Service | Transport | Port |
+|---|---|---|
+| HTTP Gateway | HTTP | 3000 |
+| Booking Service | TCP | 8877 |
+| Car Service | TCP | 8878 |
+| User Service | TCP | 8879 |
+| Group Service | TCP | 8880 |
+
+
+
+
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
